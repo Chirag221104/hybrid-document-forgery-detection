@@ -16,10 +16,17 @@ from analyzers.signature_analyzer import SignatureAnalyzer
 
 app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 
-# CORS middleware to allow frontend connections
+# Updated CORS middleware for production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "http://localhost:8080"],
+    allow_origins=[
+        "http://localhost:3000",     # Development - Vite
+        "http://localhost:5173",     # Development - Vite alternative
+        "http://localhost:8080",     # Development - alternative
+        "https://*.vercel.app",      # All Vercel deployments
+        "https://vercel.app",        # Vercel domain
+        "*"                          # Allow all origins (remove in production if security is critical)
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,7 +34,15 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    return {"message": "Document Forgery Detection API is running"}
+    return {
+        "message": "Document Forgery Detection API is running",
+        "version": "1.0.0",
+        "status": "active"
+    }
+
+@app.get("/health")
+async def health_check():
+    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
 
 @app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
@@ -98,6 +113,7 @@ async def analyze_document(file: UploadFile = File(...)):
                 os.unlink(temp_file_path)
                 
     except Exception as e:
+        print(f"Analysis error: {str(e)}")  # For debugging
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_analyzer):
@@ -125,6 +141,7 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
             "modifiedDate": None
         }
 
+# For Vercel serverless deployment
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
