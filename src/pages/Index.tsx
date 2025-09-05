@@ -76,26 +76,16 @@ const Index = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      // **UPDATED: Hostname-based API URL detection**
-      let apiUrl;
-      
-      // Check if we're on localhost (development)
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        apiUrl = "http://localhost:8000";
-      } else {
-        // Production - use your deployed backend URL
-        apiUrl = "https://hybrid-document-forgery-detection-opap36ow2.vercel.app";
-      }
+      // **BULLETPROOF FIX: Always use production URL when deployed**
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const apiUrl = isProduction 
+        ? "https://hybrid-document-forgery-detection-opap36ow2.vercel.app"
+        : "http://localhost:8000";
 
-      console.log('Using API URL:', apiUrl);
-      console.log('Current hostname:', window.location.hostname);
-      console.log('Environment info:', {
-        MODE: import.meta.env.MODE,
-        PROD: import.meta.env.PROD,
-        VITE_API_URL: import.meta.env.VITE_API_URL
-      });
-
-      console.log('Sending request to backend:', apiUrl);
+      console.log('🌍 Current hostname:', window.location.hostname);
+      console.log('🚀 Is Production:', isProduction);
+      console.log('🔗 API URL being used:', apiUrl);
+      console.log('🎯 Full request URL:', `${apiUrl}/api/analyze`);
 
       // Call FastAPI backend with explicit URL
       const response = await fetch(`${apiUrl}/api/analyze`, {
@@ -109,7 +99,7 @@ const Index = () => {
       }
 
       const data = await response.json();
-      console.log('Backend response received:', data);
+      console.log('✅ Backend response received:', data);
 
       // Ensure we reach 100%
       clearInterval(progressInterval);
@@ -130,20 +120,21 @@ const Index = () => {
       });
 
     } catch (error) {
-      console.error('Backend analysis error:', error);
+      console.error('❌ Backend analysis error:', error);
       clearInterval(progressInterval);
       setAnalysisProgress(0);
       setCurrentAnalysisStep("");
       
-      // Show specific error message with the API URL being used
+      const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
+      const apiUrl = isProduction 
+        ? "https://hybrid-document-forgery-detection-opap36ow2.vercel.app"
+        : "http://localhost:8000";
+      
       let errorMessage = "Failed to analyze document. Please try again.";
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          const apiUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
-            ? "http://localhost:8000"
-            : "https://hybrid-document-forgery-detection-opap36ow2.vercel.app";
-          errorMessage = `Cannot connect to analysis server at ${apiUrl}. Please ensure the backend is deployed and running.`;
+          errorMessage = `❌ Cannot connect to backend at ${apiUrl}. Backend may be down or there's a network issue.`;
         } else {
           errorMessage = error.message;
         }
