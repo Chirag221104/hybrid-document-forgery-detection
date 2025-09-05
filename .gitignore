@@ -35,6 +35,7 @@ build/
 .env
 .env.local
 .env.production
+.env.development
 
 # Uploads (if you have an uploads folder)
 uploads/
