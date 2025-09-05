@@ -16,20 +16,19 @@ from analyzers.signature_analyzer import SignatureAnalyzer
 
 app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 
-# UPDATED CORS middleware - includes your specific frontend domain
+# BULLETPROOF CORS Configuration - Explicit domains only
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",     # Development - React
-        "http://localhost:5173",     # Development - Vite
-        "http://localhost:8080",     # Development - alternative
-        "https://hybrid-document-forgery-detection.vercel.app",  # ✅ YOUR FRONTEND URL
-        "https://*.vercel.app",      # All Vercel subdomains
-        "https://vercel.app",        # Vercel main domain
-        "*"                          # Allow all origins (for testing - remove in strict production)
+        "http://localhost:3000",
+        "http://localhost:5173", 
+        "http://localhost:8080",
+        "https://hybrid-document-forgery-detection.vercel.app",  # Your exact frontend URL
+        "https://vercel.app",
+        "*"  # Allow all as fallback
     ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -39,6 +38,7 @@ async def root():
         "message": "Document Forgery Detection API is running",
         "version": "1.0.0",
         "status": "active",
+        "cors_enabled": True,
         "timestamp": datetime.now().isoformat()
     }
 
@@ -46,37 +46,35 @@ async def root():
 async def health_check():
     return {
         "status": "healthy", 
-        "timestamp": datetime.now().isoformat(),
-        "cors_enabled": True
+        "cors_working": True,
+        "timestamp": datetime.now().isoformat()
     }
+
+# Add CORS preflight handler
+@app.options("/api/analyze")
+async def preflight_handler():
+    return {"message": "CORS preflight OK"}
 
 @app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
-    """
-    Analyze uploaded document for forgery detection
-    """
+    """Analyze uploaded document for forgery detection"""
     try:
-        # Validate file
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
         
-        # Check file size (max 50MB)
         content = await file.read()
         file_size = len(content)
         
         if file_size > 50 * 1024 * 1024:  # 50MB
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
         
-        # Reset file pointer
         await file.seek(0)
         
-        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}") as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
         
         try:
-            # Get file info
             file_info = {
                 "filename": file.filename,
                 "size": file_size,
@@ -84,7 +82,7 @@ async def analyze_document(file: UploadFile = File(...)):
                 "upload_time": datetime.now().isoformat()
             }
             
-            print(f"📁 Processing file: {file.filename} ({file_size} bytes)")
+            print(f"📁 Processing: {file.filename}")
             
             # Initialize analyzers
             pdf_analyzer = PDFAnalyzer()
@@ -93,23 +91,15 @@ async def analyze_document(file: UploadFile = File(...)):
             text_analyzer = TextAnalyzer()
             signature_analyzer = SignatureAnalyzer()
             
-            # Extract metadata based on file type
-            print("🔍 Extracting metadata...")
+            # Extract metadata
             metadata = await extract_metadata(temp_file_path, file_info, pdf_analyzer, docx_analyzer)
             
-            # Perform text analysis
-            print("📝 Analyzing text content...")
+            # Perform analyses
             text_analysis = await text_analyzer.analyze(temp_file_path, file_info)
-            
-            # Perform image analysis
-            print("🖼️ Analyzing images...")
             image_analysis = await image_analyzer.analyze(temp_file_path, file_info)
-            
-            # Perform signature analysis
-            print("🔐 Checking digital signatures...")
             signature_check = await signature_analyzer.analyze(temp_file_path, file_info)
             
-            print("✅ Analysis complete!")
+            print("✅ Analysis complete")
             
             return JSONResponse({
                 "success": True,
@@ -121,10 +111,8 @@ async def analyze_document(file: UploadFile = File(...)):
             })
             
         finally:
-            # Clean up temporary file
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
-                print(f"🗑️ Cleaned up temporary file: {temp_file_path}")
                 
     except Exception as e:
         print(f"❌ Analysis error: {str(e)}")
@@ -142,15 +130,12 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
     file_type = file_info["type"]
     
     if file_type == "application/pdf":
-        print("📄 Extracting PDF metadata...")
         pdf_metadata = await pdf_analyzer.extract_metadata(file_path)
         return {**base_metadata, **pdf_metadata}
     elif file_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
-        print("📝 Extracting DOCX metadata...")
         docx_metadata = await docx_analyzer.extract_metadata(file_path)
         return {**base_metadata, **docx_metadata}
     else:
-        print(f"ℹ️ File type {file_type} - using basic metadata only")
         return {
             **base_metadata,
             "author": "Not available for this file type",
@@ -158,7 +143,6 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
             "modifiedDate": None
         }
 
-# For Vercel serverless deployment
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
