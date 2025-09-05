@@ -16,16 +16,17 @@ from analyzers.signature_analyzer import SignatureAnalyzer
 
 app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 
-# Updated CORS middleware for production
+# UPDATED CORS middleware - includes your specific frontend domain
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",     # Development - Vite
-        "http://localhost:5173",     # Development - Vite alternative
+        "http://localhost:3000",     # Development - React
+        "http://localhost:5173",     # Development - Vite
         "http://localhost:8080",     # Development - alternative
-        "https://*.vercel.app",      # All Vercel deployments
-        "https://vercel.app",        # Vercel domain
-        "*"                          # Allow all origins (remove in production if security is critical)
+        "https://hybrid-document-forgery-detection.vercel.app",  # ✅ YOUR FRONTEND URL
+        "https://*.vercel.app",      # All Vercel subdomains
+        "https://vercel.app",        # Vercel main domain
+        "*"                          # Allow all origins (for testing - remove in strict production)
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -37,12 +38,17 @@ async def root():
     return {
         "message": "Document Forgery Detection API is running",
         "version": "1.0.0",
-        "status": "active"
+        "status": "active",
+        "timestamp": datetime.now().isoformat()
     }
 
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
+    return {
+        "status": "healthy", 
+        "timestamp": datetime.now().isoformat(),
+        "cors_enabled": True
+    }
 
 @app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
@@ -55,7 +61,6 @@ async def analyze_document(file: UploadFile = File(...)):
             raise HTTPException(status_code=400, detail="No file provided")
         
         # Check file size (max 50MB)
-        file_size = 0
         content = await file.read()
         file_size = len(content)
         
@@ -79,6 +84,8 @@ async def analyze_document(file: UploadFile = File(...)):
                 "upload_time": datetime.now().isoformat()
             }
             
+            print(f"📁 Processing file: {file.filename} ({file_size} bytes)")
+            
             # Initialize analyzers
             pdf_analyzer = PDFAnalyzer()
             docx_analyzer = DOCXAnalyzer()
@@ -87,16 +94,22 @@ async def analyze_document(file: UploadFile = File(...)):
             signature_analyzer = SignatureAnalyzer()
             
             # Extract metadata based on file type
+            print("🔍 Extracting metadata...")
             metadata = await extract_metadata(temp_file_path, file_info, pdf_analyzer, docx_analyzer)
             
             # Perform text analysis
+            print("📝 Analyzing text content...")
             text_analysis = await text_analyzer.analyze(temp_file_path, file_info)
             
             # Perform image analysis
+            print("🖼️ Analyzing images...")
             image_analysis = await image_analyzer.analyze(temp_file_path, file_info)
             
             # Perform signature analysis
+            print("🔐 Checking digital signatures...")
             signature_check = await signature_analyzer.analyze(temp_file_path, file_info)
+            
+            print("✅ Analysis complete!")
             
             return JSONResponse({
                 "success": True,
@@ -111,9 +124,10 @@ async def analyze_document(file: UploadFile = File(...)):
             # Clean up temporary file
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
+                print(f"🗑️ Cleaned up temporary file: {temp_file_path}")
                 
     except Exception as e:
-        print(f"Analysis error: {str(e)}")  # For debugging
+        print(f"❌ Analysis error: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis failed: {str(e)}")
 
 async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_analyzer):
@@ -128,12 +142,15 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
     file_type = file_info["type"]
     
     if file_type == "application/pdf":
+        print("📄 Extracting PDF metadata...")
         pdf_metadata = await pdf_analyzer.extract_metadata(file_path)
         return {**base_metadata, **pdf_metadata}
     elif file_type in ["application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword"]:
+        print("📝 Extracting DOCX metadata...")
         docx_metadata = await docx_analyzer.extract_metadata(file_path)
         return {**base_metadata, **docx_metadata}
     else:
+        print(f"ℹ️ File type {file_type} - using basic metadata only")
         return {
             **base_metadata,
             "author": "Not available for this file type",

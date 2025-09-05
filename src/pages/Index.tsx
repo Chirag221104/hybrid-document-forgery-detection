@@ -79,7 +79,7 @@ const Index = () => {
       // **BULLETPROOF FIX: Always use production URL when deployed**
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-opap36ow2.vercel.app"
+        ? "https://hybrid-document-forgery-detection-ci9whj43r.vercel.app"
         : "http://localhost:8000";
 
       console.log('🌍 Current hostname:', window.location.hostname);
