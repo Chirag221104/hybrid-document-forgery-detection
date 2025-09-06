@@ -130,3 +130,8 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
 
 # ✅ CRITICAL: Vercel serverless handler
 handler = app
+
+# ✅ ADD THIS BLOCK: For running locally with 'python index.py'
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
