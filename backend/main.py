@@ -1,6 +1,7 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 import os
 import tempfile
 import shutil
@@ -20,6 +21,7 @@ app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins (equivalent to Node.js cors())
+    allow_origin_regex=".*",
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
@@ -45,8 +47,12 @@ async def health_check():
 
 @app.options("/api/analyze")
 async def preflight_handler():
-    return {"message": "CORS preflight OK"}
-
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "*"
+    }
+    return Response(status_code=200, headers=headers)
 @app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
     """
