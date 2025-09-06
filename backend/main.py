@@ -18,10 +18,14 @@ app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 # ✅ Robust CORS config (works well in Vercel serverless)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Allow all origins
+    allow_origins=[
+        "https://hybrid-document-forgery-detection.vercel.app",  # ✅ your frontend
+        "http://localhost:5173",  # ✅ dev mode
+        "http://127.0.0.1:5173"
+    ],
     allow_credentials=True,
-    allow_methods=["*"],   # Allow all HTTP methods
-    allow_headers=["*"],   # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ✅ Global OPTIONS handler for preflight requests
