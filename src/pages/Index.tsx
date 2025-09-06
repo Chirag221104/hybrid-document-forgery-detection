@@ -49,7 +49,7 @@ const Index = () => {
     setIsAnalyzing(true);
     setAnalysisProgress(0);
 
-    // Enhanced progress simulation with detailed steps
+    // Enhanced progress simulation
     const progressSteps = [
       { progress: 10, message: "Initializing analysis...", delay: 300 },
       { progress: 25, message: "Uploading file to server...", delay: 500 },
@@ -76,10 +76,10 @@ const Index = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      // **BULLETPROOF FIX: Always use production URL when deployed**
+      // ✅ FIXED: Use the same backend URL in both try and catch blocks
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-nnf1w4y1k.vercel.app"
+        ? "https://hybrid-document-forgery-detection-nnf1w4y1k.vercel.app"  // ✅ Your current backend
         : "http://localhost:8000";
 
       console.log('🌍 Current hostname:', window.location.hostname);
@@ -87,7 +87,6 @@ const Index = () => {
       console.log('🔗 API URL being used:', apiUrl);
       console.log('🎯 Full request URL:', `${apiUrl}/api/analyze`);
 
-      // Call FastAPI backend with explicit URL
       const response = await fetch(`${apiUrl}/api/analyze`, {
         method: "POST",
         body: formData,
@@ -101,12 +100,10 @@ const Index = () => {
       const data = await response.json();
       console.log('✅ Backend response received:', data);
 
-      // Ensure we reach 100%
       clearInterval(progressInterval);
       setAnalysisProgress(100);
       setCurrentAnalysisStep("Analysis complete!");
 
-      // Set results from backend
       setResults({
         metadata: data.metadata,
         textAnalysis: data.textAnalysis,
@@ -125,16 +122,17 @@ const Index = () => {
       setAnalysisProgress(0);
       setCurrentAnalysisStep("");
       
+      // ✅ FIXED: Use same API URL as in try block
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-opap36ow2.vercel.app"
+        ? "https://hybrid-document-forgery-detection-jt3ycjelf.vercel.app"  // ✅ Same URL
         : "http://localhost:8000";
       
       let errorMessage = "Failed to analyze document. Please try again.";
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = `❌ Cannot connect to backend at ${apiUrl}. Backend may be down or there's a network issue.`;
+          errorMessage = `❌ Cannot connect to backend at ${apiUrl}. Please check if Vercel Deployment Protection is disabled.`;
         } else {
           errorMessage = error.message;
         }
@@ -213,7 +211,7 @@ const Index = () => {
                   </Button>
                 </div>
                 
-                {/* Inline Progress Bar (appears when analyzing) */}
+                {/* Inline Progress Bar */}
                 {isAnalyzing && (
                   <div className="mt-4 space-y-3">
                     <div className="flex items-center justify-between">
@@ -232,7 +230,7 @@ const Index = () => {
           </CardContent>
         </Card>
 
-        {/* Main Progress Section (Enhanced) */}
+        {/* Progress Section */}
         {isAnalyzing && (
           <Card className="mb-8 border-primary/20 shadow-lg">
             <CardHeader className="pb-4">
@@ -242,21 +240,15 @@ const Index = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Main Progress Bar */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-lg font-semibold">Analysis Progress</span>
                   <span className="text-2xl font-bold text-primary">{analysisProgress}%</span>
                 </div>
-                <Progress 
-                  value={analysisProgress} 
-                  className="w-full h-4 bg-gray-200"
-                />
+                <Progress value={analysisProgress} className="w-full h-4 bg-gray-200" />
                 <div className="flex items-center space-x-3">
                   <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                  <p className="text-base font-medium text-foreground">
-                    {currentAnalysisStep}
-                  </p>
+                  <p className="text-base font-medium text-foreground">{currentAnalysisStep}</p>
                 </div>
               </div>
 
@@ -309,7 +301,7 @@ const Index = () => {
               <TextAnalysis data={results.textAnalysis} />
             </div>
             
-            {/* Only show ImageAnalysis if images are actually found */}
+            {/* Only show ImageAnalysis if images are found */}
             {results.imageAnalysis && (
               <ImageAnalysis data={results.imageAnalysis} />
             )}

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 import os
 import tempfile
 import shutil
@@ -15,28 +15,14 @@ from analyzers.signature_analyzer import SignatureAnalyzer
 
 app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 
-# ✅ Robust CORS config (works well in Vercel serverless)
+# ✅ Simple CORS - Allow everything (like Node.js app.use(cors()))
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://hybrid-document-forgery-detection.vercel.app",  # ✅ your frontend
-        "http://localhost:5173",  # ✅ dev mode
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=["*"],  # Allow all origins
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods
+    allow_headers=["*"],  # Allow all headers
 )
-
-# ✅ Global OPTIONS handler for preflight requests
-@app.options("/{rest_of_path:path}")
-async def preflight_handler(rest_of_path: str):
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-        "Access-Control-Allow-Headers": "*",
-    }
-    return Response(status_code=200, headers=headers)
 
 @app.get("/")
 async def root():
@@ -44,7 +30,7 @@ async def root():
         "message": "Document Forgery Detection API is running",
         "version": "1.0.0",
         "status": "active",
-        "cors": "enabled for all origins",
+        "cors": "enabled",
         "timestamp": datetime.now().isoformat()
     }
 
@@ -56,33 +42,26 @@ async def health_check():
         "timestamp": datetime.now().isoformat()
     }
 
-@app.post("/api/analyze")
+@app.post("/api/analyze")  # Keep this endpoint path
 async def analyze_document(file: UploadFile = File(...)):
-    """
-    Analyze uploaded document for forgery detection
-    """
+    """Analyze uploaded document for forgery detection"""
     try:
-        # Validate file
         if not file.filename:
             raise HTTPException(status_code=400, detail="No file provided")
 
-        # Check file size (max 50MB)
         content = await file.read()
         file_size = len(content)
 
         if file_size > 50 * 1024 * 1024:  # 50MB
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
-        # Reset file pointer
         await file.seek(0)
 
-        # Create temporary file
         with tempfile.NamedTemporaryFile(delete=False, suffix=f"_{file.filename}") as temp_file:
             shutil.copyfileobj(file.file, temp_file)
             temp_file_path = temp_file.name
 
         try:
-            # File info
             file_info = {
                 "filename": file.filename,
                 "size": file_size,
@@ -103,15 +82,13 @@ async def analyze_document(file: UploadFile = File(...)):
             print("🔍 Extracting metadata...")
             metadata = await extract_metadata(temp_file_path, file_info, pdf_analyzer, docx_analyzer)
 
-            # Perform text analysis
+            # Perform analyses
             print("📝 Analyzing text content...")
             text_analysis = await text_analyzer.analyze(temp_file_path, file_info)
 
-            # Perform image analysis
             print("🖼️ Analyzing images...")
             image_analysis = await image_analyzer.analyze(temp_file_path, file_info)
 
-            # Perform signature analysis
             print("🔐 Checking digital signatures...")
             signature_check = await signature_analyzer.analyze(temp_file_path, file_info)
 
@@ -127,7 +104,6 @@ async def analyze_document(file: UploadFile = File(...)):
             })
 
         finally:
-            # Clean up temporary file
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
                 print(f"🗑️ Cleaned up temporary file: {temp_file_path}")
@@ -167,7 +143,7 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
             "modifiedDate": None,
         }
 
-# ✅ Entry point for Vercel serverless
+# Vercel serverless handler
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
