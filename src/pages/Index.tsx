@@ -76,10 +76,10 @@ const Index = () => {
       const formData = new FormData();
       formData.append("file", file);
 
-      // ✅ FIXED: Use the same backend URL in both try and catch blocks
+      // ✅ FIXED: Use your latest backend deployment URL consistently
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-nnf1w4y1k.vercel.app"  // ✅ Your current backend
+        ? "https://hybrid-document-forgery-detection-6nmujfh4f.vercel.app"  // ✅ Your latest backend
         : "http://localhost:8000";
 
       console.log('🌍 Current hostname:', window.location.hostname);
@@ -125,14 +125,14 @@ const Index = () => {
       // ✅ FIXED: Use same API URL as in try block
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-jt3ycjelf.vercel.app"  // ✅ Same URL
+        ? "https://hybrid-document-forgery-detection-6nmujfh4f.vercel.app"  // ✅ Same URL consistently
         : "http://localhost:8000";
       
       let errorMessage = "Failed to analyze document. Please try again.";
       
       if (error instanceof Error) {
         if (error.message.includes('Failed to fetch')) {
-          errorMessage = `❌ Cannot connect to backend at ${apiUrl}. Please check if Vercel Deployment Protection is disabled.`;
+          errorMessage = `❌ Cannot connect to backend at ${apiUrl}. Backend may be down or there's a network issue.`;
         } else {
           errorMessage = error.message;
         }

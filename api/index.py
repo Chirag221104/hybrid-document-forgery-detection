@@ -142,6 +142,8 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
             "createdDate": None,
             "modifiedDate": None,
         }
+    
+handler = app 
 
 # Vercel serverless handler
 if __name__ == "__main__":
