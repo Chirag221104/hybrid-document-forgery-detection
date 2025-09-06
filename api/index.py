@@ -15,13 +15,13 @@ from analyzers.signature_analyzer import SignatureAnalyzer
 
 app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
 
-# ✅ Simple CORS - Allow everything (like Node.js app.use(cors()))
+# Simple CORS - Allow everything
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins
+    allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],  # Allow all methods
-    allow_headers=["*"],  # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.get("/")
@@ -30,7 +30,6 @@ async def root():
         "message": "Document Forgery Detection API is running",
         "version": "1.0.0",
         "status": "active",
-        "cors": "enabled",
         "timestamp": datetime.now().isoformat()
     }
 
@@ -38,11 +37,10 @@ async def root():
 async def health_check():
     return {
         "status": "healthy",
-        "cors": "working",
         "timestamp": datetime.now().isoformat()
     }
 
-@app.post("/api/analyze")  # Keep this endpoint path
+@app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
     """Analyze uploaded document for forgery detection"""
     try:
@@ -52,7 +50,7 @@ async def analyze_document(file: UploadFile = File(...)):
         content = await file.read()
         file_size = len(content)
 
-        if file_size > 50 * 1024 * 1024:  # 50MB
+        if file_size > 50 * 1024 * 1024:
             raise HTTPException(status_code=400, detail="File too large (max 50MB)")
 
         await file.seek(0)
@@ -69,8 +67,6 @@ async def analyze_document(file: UploadFile = File(...)):
                 "upload_time": datetime.now().isoformat()
             }
 
-            print(f"📁 Processing file: {file.filename} ({file_size} bytes)")
-
             # Initialize analyzers
             pdf_analyzer = PDFAnalyzer()
             docx_analyzer = DOCXAnalyzer()
@@ -78,21 +74,11 @@ async def analyze_document(file: UploadFile = File(...)):
             text_analyzer = TextAnalyzer()
             signature_analyzer = SignatureAnalyzer()
 
-            # Extract metadata
-            print("🔍 Extracting metadata...")
+            # Perform analysis
             metadata = await extract_metadata(temp_file_path, file_info, pdf_analyzer, docx_analyzer)
-
-            # Perform analyses
-            print("📝 Analyzing text content...")
             text_analysis = await text_analyzer.analyze(temp_file_path, file_info)
-
-            print("🖼️ Analyzing images...")
             image_analysis = await image_analyzer.analyze(temp_file_path, file_info)
-
-            print("🔐 Checking digital signatures...")
             signature_check = await signature_analyzer.analyze(temp_file_path, file_info)
-
-            print("✅ Analysis complete!")
 
             return JSONResponse({
                 "success": True,
@@ -106,7 +92,6 @@ async def analyze_document(file: UploadFile = File(...)):
         finally:
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
-                print(f"🗑️ Cleaned up temporary file: {temp_file_path}")
 
     except Exception as e:
         print(f"❌ Analysis error: {str(e)}")
@@ -124,28 +109,21 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
     file_type = file_info["type"]
 
     if file_type == "application/pdf":
-        print("📄 Extracting PDF metadata...")
         pdf_metadata = await pdf_analyzer.extract_metadata(file_path)
         return {**base_metadata, **pdf_metadata}
     elif file_type in [
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword",
     ]:
-        print("📝 Extracting DOCX metadata...")
         docx_metadata = await docx_analyzer.extract_metadata(file_path)
         return {**base_metadata, **docx_metadata}
     else:
-        print(f"ℹ️ File type {file_type} - using basic metadata only")
         return {
             **base_metadata,
             "author": "Not available for this file type",
             "createdDate": None,
             "modifiedDate": None,
         }
-    
-handler = app 
 
-# Vercel serverless handler
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
+# ✅ CRITICAL: This is what Vercel needs for serverless functions
+handler = app
