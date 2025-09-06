@@ -13,9 +13,9 @@ from analyzers.image_analyzer import ImageAnalyzer
 from analyzers.text_analyzer import TextAnalyzer
 from analyzers.signature_analyzer import SignatureAnalyzer
 
-app = FastAPI(title="Document Forgery Detection API", version="1.0.0")
+app = FastAPI()
 
-# Simple CORS - Allow everything
+# CORS Configuration
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,6 +25,7 @@ app.add_middleware(
 )
 
 @app.get("/")
+@app.get("/api")
 async def root():
     return {
         "message": "Document Forgery Detection API is running",
@@ -34,12 +35,14 @@ async def root():
     }
 
 @app.get("/health")
+@app.get("/api/health")
 async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat()
     }
 
+@app.post("/analyze")
 @app.post("/api/analyze")
 async def analyze_document(file: UploadFile = File(...)):
     """Analyze uploaded document for forgery detection"""
@@ -125,5 +128,5 @@ async def extract_metadata(file_path: str, file_info: dict, pdf_analyzer, docx_a
             "modifiedDate": None,
         }
 
-# ✅ CRITICAL: This is what Vercel needs for serverless functions
+# ✅ CRITICAL: Vercel serverless handler
 handler = app

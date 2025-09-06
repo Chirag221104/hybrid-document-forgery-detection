@@ -79,7 +79,7 @@ const Index = () => {
       // ✅ FIXED: Use your latest backend deployment URL consistently
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-oqw5lf5jn.vercel.app"  // ✅ Your latest backend
+        ? "https://hybrid-document-forgery-detection-nnf1w4y1k.vercel.app"  // ✅ Your latest backend
         : "http://localhost:8000";
 
       console.log('🌍 Current hostname:', window.location.hostname);
@@ -125,7 +125,7 @@ const Index = () => {
       // ✅ FIXED: Use same API URL as in try block
       const isProduction = window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1';
       const apiUrl = isProduction 
-        ? "https://hybrid-document-forgery-detection-oqw5lf5jn.vercel.app"  // ✅ Same URL consistently
+        ? "https://hybrid-document-forgery-detection-nnf1w4y1k.vercel.app"  // ✅ Same URL consistently
         : "http://localhost:8000";
       
       let errorMessage = "Failed to analyze document. Please try again.";
